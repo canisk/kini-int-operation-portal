@@ -1,0 +1,281 @@
+{
+    "metadata": {
+        "systemTags": {
+            "tenantId": [
+                "tenant101"
+            ],
+            "categoryType": [
+                "mainPlan"
+            ],
+            "tenantName": [],
+            "ratingType": [
+                "prepaid"
+            ]
+        },
+        "userTags": [],
+        "relationships": {
+            "promos": [],
+            "parents": [
+                [
+                    "catalog_v1.0_96cdcdc2-d0d1-4105-9221-7a37b1519b02"
+                ]
+            ],
+            "bundles": []
+        }
+    },
+    "productOfferingRef": [
+        {
+            "name": "Kini | Prepaid Mainplan | CA | $10 | 10GB | 10Kmin | 10Ksms | 10Kmms | unlimited | for testing",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_637e0d1bce1-991bfa44f0b8",
+            "href": ""
+        },
+        {
+            "name": "Mainplan | CA | $10 | 0GB | 0min | 0sms | 0mms | Vacation Disconnect",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_29f1c-464f-a3eb-12012ed295bc",
+            "href": "https://bss.tenan12012ed295bc"
+        },
+        {
+            "name": "Mainplan | ROC | $80 | 100GB | 10Kmin | 10Ksms | 10Kmms | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_afae2899c-cc74321126b2",
+            "href": "https://bss.tenanc-899c-cc74321126b2"
+        },
+        {
+            "name": "Mainplan | ROC | $100 | 75GB | 10Kmin | 10Ksms | 10Kmms | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_324709-8cc0-932cd5343635",
+            "href": "https://bss.tenant101-k8d45-4709-8cc0-932cd5343635"
+        },
+        {
+            "name": "Mainplan | QC | $30 | 75GB | 10Kmin | 10Ksms | 10Kmms | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_6386a82ee-7783002e84a9",
+            "href": "https://bss.tenan-2dcd-46f4-82ee-7783002e84a9"
+        },
+        {
+            "name": "Mainplan | QC | $10 | 100GB | 10Kmin | 10Ksms | 10Kmms | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_848bca12-31-136098c2b0ab",
+            "href": "https://bss.tenant101-kz86t3-pro4b-938d-136098c2b0ab"
+        },
+        {
+            "name": "Mainplan | ROC | $19 | 20GB | 10Kmin | 10Ksms | 10Kmms | Launch Plan ",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_59b73dce-e5-5d0e21bcb873",
+            "href": "https://bss.tenant101-kz8dce-e5d2-4384-aaf0-5d0e21bcb873"
+        },
+        {
+            "name": "Mainplan | ROC | $94 | 40GB | 10Kmin | 10Ksms | 10Kmms | Launch Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_93485687f-f5124b116cfd",
+            "href": "https://bss.tenant101-kz8686-5ed9-4f7c-ab7f-f5124b116cfd"
+        },
+        {
+            "name": "Mainplan | ROC | $81 | 60GB | 10Kmin | 10Ksms | 10Kmms | Launch Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_52384c-d26fafe72207",
+            "href": "https://bss.tenant101-kz58f5-e7ca-4b40-b84c-d26fafe72207"
+        },
+        {
+            "name": "Mainplan | ROC | $10 | 60GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_509f94-4532-9833-8c47ac9a9a20"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $10 | 60GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_1d0fe1f0037d189a453",
+            "href": "https://bss.tenant101-ke1f5-9e73-461f-bdc9-0037d189a453"
+        },
+        {
+            "name": "Mainplan | ROC | $10 | 250MB | 10Kmin | 10Ksms | 3G speed | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_ad8ef31116207f8e742",
+            "href": "https://bss.tenant1ad8ef315-b538-485e-bb6a-116207f8e742"
+        },
+        {
+            "name": "Mainplan | QC | $10 | 250MB | 10Kmin | 10Ksms | 3G speed | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_6fe3a07d-f-02862ad3301f",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_6fe3a07d-4fe7-4a6d-b61f-02862ad3301f"
+        },
+        {
+            "name": "Mainplan | ROC | $19 | 0GB | 10Kmin | 10Ksms | 10Kmms | Talk and Text | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_594938a66-a5aa5bdcb087",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_594938fe-9cc8-446f-ba66-a5aa5bdcb087"
+        },
+        {
+            "name": "Mainplan | ROC | $46 | 60GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_32cac3eb-fd7c45cf66c9",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_32cac3ea-f517-47de-a0bb-fd7c45cf66c9"
+        },
+        {
+            "name": "Mainplan | ROC | $63 | 30GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_b2be18-a988-aa751ac739f0",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_b2be18ba-cfec-4dc4-a988-aa751ac739f0"
+        },
+        {
+            "name": "Mainplan | ROC | $90 | 80GB | 10Kmin | 10Ksms | 10Kmms | CANUS | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_569760a9a0a50fd",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_5697f963-81d4-4936-af9f-860a9a0a50fd"
+        },
+        {
+            "name": "Mainplan | ROC | $68 | 120GB | 10Kmin | 10Ksms | 10Kmms | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_d3b30-9c3dfd4c4f3e",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_d3b3be08-533c-49b5-8370-9c3dfd4c4f3e"
+        },
+        {
+            "name": "Mainplan | QC | $64 | 120GB | 10Kmin | 10Ksms | 10Kmms | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_1d94e405b4daa561c",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_1d94e8cc-6200-469d-a2e7-405b4daa561c"
+        },
+        {
+            "name": "Mainplan | CA | $10 | 50GB | 10Kmin | 10Ksms | 10Kmms | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v2.0_57d4-59e8d3e738ca",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v2.0_5714933b-434d-4c07-a9d4-59e8d3e738ca"
+        },
+        {
+            "name": "Prepaid Mainplan | CA | $15 | 25GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_7b1f05d7-e8-44f96e7262af",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_7b1f05d7-e811-4506-8682-44f96e7262af"
+        },
+        {
+            "name": "Mainplan | ROC | $15 | 100GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_0d7437-9ef6-b3eacad02099",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_0d743737-2198-4ea7-9ef6-b3eacad02099"
+        },
+        {
+            "name": "Mainplan | ROC | $90 | 80GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match | Easy Roam US MX",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_9cd4f6d9d07-cbe3ee92388d",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_9cd4f6dd-d063-4dd9-9d07-cbe3ee92388d"
+        },
+        {
+            "name": "Mainplan | ROC | $70 | 20GB | 10Kmin | 10Ksms | 10Kmms | 5G Speed | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_deed-237ef6259c9c",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_deed6875-bb42-4aed-985e-237ef6259c9c"
+        },
+        {
+            "name": "Mainplan | CA | $15 | 500MB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_939463-97ec-cba2283cf44e",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_93946663-a943-4783-97ec-cba2283cf44e"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $17 | 50GB | 10Kmin | 10Ksms | 10Kmms | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_3f1f522-b228-2971ef5ffc8d",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_3f1f525f-2c3f-4872-b228-2971ef5ffc8d"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $89 | 75GB | 10Kmin | 10Ksms | 10Kmms | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_9a70-bab9-bc35f11fc88b",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_9a70260a-4079-4ee0-bab9-bc35f11fc88b"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $56 | 100GB | 10Kmin | 10Ksms | 10Kmms | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_b05ef90931-9512e45c6800",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_b05ef909-9950-4867-8a31-9512e45c6800"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $56 | 120GB | 10Kmin | 10Ksms | 10Kmms | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_cfb6f6-b113-04ccda98cc69",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_cfb6f6c3-a74d-4f83-b113-04ccda98cc69"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $12 | 95GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_d4aefd-8498-fab5f4f72f47",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_d4aefd09-a96c-4a61-8498-fab5f4f72f47"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $78 | 80GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_cb51e242dc71845",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_cb51e221-07d1-43c3-a2a9-69342dc71845"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $92 | 35GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_bbb1fba7ad5adaa42e8e",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_bbb1fba7-c5cd-49c6-91d0-ad5adaa42e8e"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $29 | 1GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_e51ac727-6d2e1c7ed37d",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_e51ac727-d5f9-4104-b758-6d2e1c7ed37d"
+        },
+        {
+            "name": "Mainplan | CA | $20 | 60GB | 10Kmin | 10Ksms | 10Kmms | Koodo Price Match | Easy Roam US MX ",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_1a4fc5499-80dc6c9da95f",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_1a4fc549-e369-4d1e-b0b9-80dc6c9da95f"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $20 | 50GB | 10Kmin | 10Ksms | 10Kmms | Easy Roam US MX | FIFA Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_ca749cc-948a-9063412727dc",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_ca74224d-c686-49cc-948a-9063412727dc"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $25 | 75GB | 10Kmin | 10Ksms | 10Kmms | Easy Roam US MX | FIFA Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_a657e36-cbb1028f5d8f",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_a6572b1c-43c7-4fe4-ae36-cbb1028f5d8f"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | 28 | 50GB | 10Kmin | 10Ksms | 10Kmms | FIFAPlan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_63188-9610-41b21572f63e",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_631a9043-76d2-4788-9610-41b21572f63e"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $33 | 75GB | 10Kmin | 10Ksms | 10Kmms | FIFA Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_2682bc0ba57-48ea6887d1fb",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_2682bc01-119a-43e2-ba57-48ea6887d1fb"
+        },
+        {
+            "name": "Prepaid Mainplan | ROC | $27 | 50GB | 10Kmin | 10Ksms | 10Kmms | 5G Speed | Offshore Plan",
+            "@referredType": "ProductOffering",
+            "id": "offering_v1.0_5f3e00793-98a2-d1873143c829",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_5f3e00eb-1c82-4793-98a2-d1873143c829"
+        }
+  
+    ],
+    "lifecycleStatus": "Active",
+    "version": "1.0",
+    "catalogRef": [
+        {
+            "name": "KiniMobile",
+            "@referredType": "Catalog",
+            "id": "catalog_v1.0_96cd05-9221-7a37b1519b02",
+            "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog"
+        }
+    ],
+    "lastUpdate": "2024-05-21T18:11:08.036Z",
+    "startDateTime": "2024-05-21T18:11:08.036Z",
+    "description": "Offers for prepaid plans",
+    "id": "category_v1.0_a77bf5a9-d00f-417c-ab22-d5baa0c7763a",
+    "endDateTime": "2124-05-21T18:11:08.036Z",
+    "@baseType": "Catalog",
+    "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/category/category_v1.0_a77bf5a9-d00f-417c-ab22-d5baa0c7763a",
+    "name": "MainPlanPrepaid_Kini",
+    "@type": "Category"
+}
