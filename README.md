@@ -1,6 +1,6 @@
 # kini Plans Portal
 
-Internal frontend prototype for browsing and reviewing telecom plan information.
+Internal frontend prototype for browsing and reviewing selected TELUS API information.
 
 Built with **Next.js** (App Router) and React. Not a customer-facing product.
 
