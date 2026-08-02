@@ -49,6 +49,7 @@ export interface ProductOffering {
       categoryType?: string[];
       place?: string[];
       tenantId?: string[];
+      tenantName?: string[];
     };
     userTags?: string[];
     relationships?: {

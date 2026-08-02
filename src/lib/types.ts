@@ -18,6 +18,22 @@ export interface PlanChangeLogEntry {
   changeType: string;
 }
 
+/** Unlisted change detected by comparing auto API pulls against SQLite. */
+export interface AuditFieldChange {
+  path: string;
+  from: unknown;
+  to: unknown;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  productOfferingId: string;
+  actionType: "INSERT" | "UPDATE";
+  changedAt: string;
+  detectedChanges: AuditFieldChange[];
+  fullSnapshot: unknown;
+}
+
 export interface PlanRelationships {
   promos: string[];
   parents: string[][];
@@ -61,6 +77,14 @@ export interface PlanListResponse {
   endpoint: string;
   count: number;
   plans: PlanSummary[];
+  /** Plans whose offering JSON changed on this fetch/sync (clears when next fetch is clean). */
+  amendedPlans?: Array<{
+    id: string;
+    name: string;
+    listed: boolean;
+    unlisted: boolean;
+    label: string;
+  }>;
 }
 
 /** API 2 — GET /api/v1/plans/:id */
@@ -71,4 +95,23 @@ export interface PlanByIdResponse {
   error?: string;
   /** Raw CCP ProductOffering when available (for JSON view). */
   offering?: unknown;
+  /** SQLite audit_logs for this offering (unlisted change log). */
+  auditLogs?: AuditLogEntry[];
+  /** Result of compare/sync against the last stored auto request. */
+  sync?: {
+    action: "unchanged" | "INSERT" | "UPDATE";
+    changeCount: number;
+    listed: boolean;
+    unlisted: boolean;
+    /** e.g. "⚠️Listed / Unlisted change by TELUS" when this fetch detected amendments. */
+    telusChangeLabel: string | null;
+  };
+  /**
+   * Heads-up when raw API JSON keys don't match ProductOffering
+   * (unknown renames / extras, or missing core fields).
+   */
+  schemaNotes?: {
+    unknownProperties: string[];
+    missingProperties: string[];
+  };
 }

@@ -135,7 +135,14 @@ export default function PlanByIdPage() {
           </pre>
         </div>
       ) : (
-        <PlanDetailPage plan={response.plan} onBack={() => router.push("/plans-portal/all-plans")} hideBack />
+        <PlanDetailPage
+          plan={response.plan}
+          onBack={() => router.push("/plans-portal/all-plans")}
+          hideBack
+          telusChangeLabel={response.sync?.telusChangeLabel}
+          auditLogs={response.auditLogs ?? []}
+          schemaNotes={response.schemaNotes}
+        />
       )}
     </div>
   );

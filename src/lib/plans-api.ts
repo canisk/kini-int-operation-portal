@@ -4,11 +4,15 @@
  * ============================================================================
  *
  * Today: fake API that returns CCP catalogue mock data
- * Later: set PLANS_API_BASE_URL and adjust parsing if needed
+ * Later:
+ *   1. Set PLANS_API_BASE_URL + auth (token and/or username/password) in .env.local
+ *   2. Cron hits POST /api/v1/sync/offerings → fetches external JSON → compares/inserts SQLite
+ *   3. Compare / audit_logs / Change log (Unlisted) UI stay the same
  *
  * Used by:
  *   src/app/api/v1/plans/route.ts
  *   src/app/api/v1/plans/[id]/route.ts
+ *   src/app/api/v1/sync/offerings/route.ts
  */
 
 import { summariesFromCategory } from "@/lib/catalog";
@@ -18,10 +22,27 @@ import {
   planFromProductOffering,
   type ProductOffering,
 } from "@/lib/product-offering";
+import {
+  getAuditLogsForOffering,
+  syncProductOffering,
+  syncProductOfferings,
+} from "@/lib/offering-store";
+import {
+  buildAmendmentAlert,
+  getPendingAmendmentAlertForId,
+  getPendingAmendmentAlerts,
+  hydratePendingAlertsFromUnaackedAudits,
+  markAmendmentAlertsShown,
+  takePendingAmendmentAlertsForCleanFetch,
+  upsertPendingAmendmentAlerts,
+} from "@/lib/amendment-alerts";
+import { classifyTelusChanges, formatTelusChangeLabel } from "@/lib/telus-change";
+import { inspectOfferingSchema } from "@/lib/offering-schema";
 import type { Plan, PlanByIdResponse, PlanListResponse, PlanSummary } from "@/lib/types";
+import offeringsById from "@/data/product-offerings.json";
 
 // ---------------------------------------------------------------------------
-// 1. Config — put your real API base URL here (or in .env.local)
+// 1. Config — put your real API base URL + credentials in .env.local
 // ---------------------------------------------------------------------------
 
 /** Example: https://api.telecom.internal/api/v1 */
@@ -29,7 +50,36 @@ export const PLANS_API_BASE_URL =
   process.env.PLANS_API_BASE_URL?.replace(/\/$/, "") || "";
 
 /** Flip to true once PLANS_API_BASE_URL is set and the real fetch works. */
-const USE_REAL_API = Boolean(PLANS_API_BASE_URL);
+export const USE_REAL_API = Boolean(PLANS_API_BASE_URL);
+
+/** Shared headers for the external catalogue API (Bearer and/or Basic). */
+export function upstreamApiHeaders(): HeadersInit {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+
+  const token = process.env.PLANS_API_TOKEN?.trim();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const username = process.env.PLANS_API_USERNAME?.trim();
+  const password = process.env.PLANS_API_PASSWORD ?? "";
+  if (username && !token) {
+    const basic = Buffer.from(`${username}:${password}`, "utf8").toString("base64");
+    headers.Authorization = `Basic ${basic}`;
+  }
+
+  return headers;
+}
+
+async function fetchUpstream(path: string): Promise<Response> {
+  return fetch(`${PLANS_API_BASE_URL}${path}`, {
+    method: "GET",
+    headers: upstreamApiHeaders(),
+    cache: "no-store",
+  });
+}
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -97,6 +147,75 @@ function parsePlanByIdPayload(data: unknown): { plan: Plan | null; offering?: un
   return { plan: null };
 }
 
+function extractOfferingIds(data: unknown): string[] {
+  if (Array.isArray(data)) {
+    return data
+      .map((item) => {
+        if (item && typeof item === "object" && "id" in item) {
+          return String((item as { id: unknown }).id);
+        }
+        return "";
+      })
+      .filter(Boolean);
+  }
+
+  if (data && typeof data === "object") {
+    const obj = data as Record<string, unknown>;
+    if (Array.isArray(obj.productOfferingRef)) {
+      return obj.productOfferingRef
+        .map((ref) => {
+          if (ref && typeof ref === "object" && "id" in ref) {
+            return String((ref as { id: unknown }).id);
+          }
+          return "";
+        })
+        .filter(Boolean);
+    }
+    if (Array.isArray(obj.plans)) {
+      return obj.plans
+        .map((p) => {
+          if (p && typeof p === "object" && "id" in p) {
+            return String((p as { id: unknown }).id);
+          }
+          return "";
+        })
+        .filter(Boolean);
+    }
+  }
+
+  return [];
+}
+
+/**
+ * Pull current ProductOffering JSON from the external API (authenticated).
+ * Used by the 8am/1pm sync job before compare + SQLite insert.
+ */
+export async function fetchUpstreamOfferings(): Promise<ProductOffering[]> {
+  if (!USE_REAL_API) {
+    throw new Error("PLANS_API_BASE_URL is not set");
+  }
+
+  const listRes = await fetchUpstream("/plans");
+  if (!listRes.ok) {
+    throw new Error(`Upstream list failed (${listRes.status})`);
+  }
+
+  const listData: unknown = await listRes.json();
+  const ids = extractOfferingIds(listData);
+  const offerings: ProductOffering[] = [];
+
+  for (const id of ids) {
+    const detail = await fetchUpstream(`/plans/${encodeURIComponent(id)}`);
+    if (!detail.ok) continue;
+    const body: unknown = await detail.json();
+    if (body && typeof body === "object" && "id" in body) {
+      offerings.push(body as ProductOffering);
+    }
+  }
+
+  return offerings;
+}
+
 // ---------------------------------------------------------------------------
 // 2. GET /plans — list plan IDs + names
 // ---------------------------------------------------------------------------
@@ -106,33 +225,82 @@ export async function getPlanList(): Promise<PlanListResponse> {
 
   // ── REAL API (enable when you have it) ───────────────────────────────────
   if (USE_REAL_API) {
-    const res = await fetch(`${PLANS_API_BASE_URL}/plans`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        // Authorization: `Bearer ${process.env.PLANS_API_TOKEN}`,
-      },
-      cache: "no-store",
-    });
+    const res = await fetchUpstream("/plans");
 
     if (!res.ok) {
-      return { status: res.status, endpoint, count: 0, plans: [] };
+      return { status: res.status, endpoint, count: 0, plans: [], amendedPlans: [] };
     }
 
     const data: unknown = await res.json();
     const plans = parsePlanListPayload(data);
-    return { status: 200, endpoint, count: plans.length, plans };
+    const amendedPlans = await collectAmendedPlans(plans);
+    return { status: 200, endpoint, count: plans.length, plans, amendedPlans };
   }
 
   // ── FAKE API (delete this block once real API is live) ───────────────────
   await delay(300);
   const plans = MOCK_PLANS.map(toSummary);
+  const amendedPlans = await collectAmendedPlans(plans);
   return {
     status: 200,
     endpoint,
     count: plans.length,
     plans,
+    amendedPlans,
   };
+}
+
+/**
+ * Sync offerings for the listed plans against SQLite.
+ * Pending alerts stay visible until a later clean fetch (with a short grace
+ * window so React Strict Mode double-mount does not wipe them instantly).
+ */
+async function collectAmendedPlans(
+  plans: PlanSummary[],
+): Promise<NonNullable<PlanListResponse["amendedPlans"]>> {
+  try {
+    const offerings = USE_REAL_API
+      ? await fetchUpstreamOfferings()
+      : Object.values(offeringsById as Record<string, ProductOffering>);
+
+    const byId = new Map(offerings.map((o) => [o.id.trim().toLowerCase(), o]));
+    const toSync: ProductOffering[] = [];
+    for (const plan of plans) {
+      const offering = byId.get(plan.id.trim().toLowerCase());
+      if (offering) toSync.push(offering);
+    }
+
+    const nameById = new Map(plans.map((p) => [p.id.trim().toLowerCase(), p.name]));
+
+    // Surface audits not yet acknowledged (e.g. change synced on detail page first)
+    hydratePendingAlertsFromUnaackedAudits(nameById);
+
+    if (toSync.length > 0) {
+      const summary = syncProductOfferings(toSync);
+      const justChanged = summary.results.filter((r) => r.action !== "unchanged");
+
+      if (justChanged.length > 0) {
+        const alerts = justChanged
+          .map((r) =>
+            buildAmendmentAlert(
+              r.id,
+              nameById.get(r.id.trim().toLowerCase()) ?? r.id,
+              r.changes,
+              r.action,
+            ),
+          )
+          .filter((a): a is NonNullable<typeof a> => Boolean(a));
+        upsertPendingAmendmentAlerts(alerts);
+        markAmendmentAlertsShown();
+        return getPendingAmendmentAlerts();
+      }
+    }
+
+    return takePendingAmendmentAlertsForCleanFetch();
+  } catch (error) {
+    console.error("[collectAmendedPlans]", error);
+    return [];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -149,14 +317,7 @@ export async function getPlanById(id: string): Promise<PlanByIdResponse> {
 
   // ── REAL API (enable when you have it) ───────────────────────────────────
   if (USE_REAL_API) {
-    const res = await fetch(`${PLANS_API_BASE_URL}/plans/${encodeURIComponent(trimmed)}`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        // Authorization: `Bearer ${process.env.PLANS_API_TOKEN}`,
-      },
-      cache: "no-store",
-    });
+    const res = await fetchUpstream(`/plans/${encodeURIComponent(trimmed)}`);
 
     if (res.status === 404) {
       return { status: 404, endpoint, plan: null, error: `Plan not found: ${trimmed}` };
@@ -176,7 +337,7 @@ export async function getPlanById(id: string): Promise<PlanByIdResponse> {
     if (!plan) {
       return { status: 500, endpoint, plan: null, error: "Unexpected product offering shape" };
     }
-    return { status: 200, endpoint, plan, offering };
+    return withAuditSync(endpoint, plan, offering as ProductOffering | undefined, data);
   }
 
   // ── FAKE API (delete this block once real API is live) ───────────────────
@@ -186,10 +347,58 @@ export async function getPlanById(id: string): Promise<PlanByIdResponse> {
     return { status: 404, endpoint, plan: null, error: `Plan not found: ${trimmed}` };
   }
 
-  return {
-    status: 200,
-    endpoint,
-    plan: planFromProductOffering(offering),
-    offering,
-  };
+  return withAuditSync(endpoint, planFromProductOffering(offering), offering, offering);
+}
+
+/** Compare fetched offering vs last SQLite snapshot; attach unlisted audit logs. */
+function withAuditSync(
+  endpoint: string,
+  plan: Plan,
+  offering: ProductOffering | undefined,
+  rawPayload?: unknown,
+): PlanByIdResponse {
+  if (!offering) {
+    return { status: 200, endpoint, plan, offering };
+  }
+
+  const schemaNotes = inspectOfferingSchema(rawPayload ?? offering);
+
+  try {
+    const sync = syncProductOffering(offering);
+    const flags = classifyTelusChanges(sync.changes);
+    if (sync.action === "INSERT" && !flags.listed && !flags.unlisted) {
+      flags.unlisted = true;
+    }
+
+    if (sync.action !== "unchanged") {
+      const alert = buildAmendmentAlert(offering.id, plan.name, sync.changes, sync.action);
+      if (alert) upsertPendingAmendmentAlerts([alert]);
+    }
+
+    const pending = getPendingAmendmentAlertForId(offering.id);
+    const auditLogs = getAuditLogsForOffering(offering.id);
+    const telusChangeLabel =
+      (sync.action === "unchanged" ? null : formatTelusChangeLabel(flags)) ??
+      pending?.label ??
+      null;
+
+    return {
+      status: 200,
+      endpoint,
+      plan,
+      offering,
+      auditLogs,
+      schemaNotes,
+      sync: {
+        action: sync.action,
+        changeCount: sync.changes.length,
+        listed: flags.listed || Boolean(pending?.listed),
+        unlisted: flags.unlisted || Boolean(pending?.unlisted),
+        telusChangeLabel,
+      },
+    };
+  } catch (error) {
+    console.error("[withAuditSync]", error);
+    return { status: 200, endpoint, plan, offering, auditLogs: [], schemaNotes };
+  }
 }

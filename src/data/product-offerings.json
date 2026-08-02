@@ -114,7 +114,7 @@
       }
     ],
     "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productOffering/offering_v1.0_637e0d1bce1-991bfa44f0b8",
-    "retirementDateTime": "2123-07-25T21:08:36.000Z",
+    "retirementDateTime": "2027-07-25T21:08:36.000Z",
     "productSpecificationRef": {
       "name": "MainPlan",
       "@referredType": "ProductSpecification",

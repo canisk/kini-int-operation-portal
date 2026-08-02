@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getPlanById } from "@/lib/plans-api";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 type RouteContext = {
   params: Promise<{ id: string }>;
 };

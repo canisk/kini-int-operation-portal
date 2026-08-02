@@ -2,7 +2,11 @@
 
 import type { ReactNode } from "react";
 import { ArrowLeft, MessageSquare, Phone, Wifi } from "lucide-react";
-import type { Plan } from "@/lib/types";
+import type { AuditLogEntry, Plan } from "@/lib/types";
+import type { OfferingSchemaNotes } from "@/lib/offering-schema";
+import { hasSchemaNotes } from "@/lib/offering-schema";
+import { UnlistedChangeLog } from "@/components/UnlistedChangeLog";
+import { SchemaHeadsUp } from "@/components/SchemaHeadsUp";
 
 function formatData(plan: Plan): string {
     if (plan.data_gb === undefined) return "n/a";
@@ -63,7 +67,15 @@ function SectionTitle({ children }: { children: ReactNode }) {
     );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({
+    label,
+    value,
+    below,
+}: {
+    label: string;
+    value: string;
+    below?: ReactNode;
+}) {
     const isLong = value.length > 40;
     if (isLong) {
         return (
@@ -72,16 +84,32 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
                 <dd className="text-sm font-semibold text-foreground font-mono break-all leading-relaxed">
                     {value}
                 </dd>
+                {below}
             </div>
         );
     }
     return (
-        <div className="flex items-baseline justify-between gap-6 py-2.5">
-            <dt className="text-sm text-muted-foreground shrink-0">{label}</dt>
-            <dd className="text-sm font-semibold text-foreground text-right">
-                {value}
-            </dd>
+        <div className="py-2.5">
+            <div className="flex items-baseline justify-between gap-6">
+                <dt className="text-sm text-muted-foreground shrink-0">{label}</dt>
+                <dd className="text-sm font-semibold text-foreground text-right font-mono break-all">
+                    {value}
+                </dd>
+            </div>
+            {below}
         </div>
+    );
+}
+
+/** Yellow TELUS amendment badge — Listed / Unlisted from latest sync. */
+export function TelusChangeBadge({ label }: { label: string }) {
+    return (
+        <span
+            className="inline-flex mt-1.5 text-[11px] font-bold px-2 py-0.5 rounded-md text-foreground"
+            style={{ backgroundColor: "#FFD1DE" }}
+        >
+            {label}
+        </span>
     );
 }
 
@@ -335,7 +363,17 @@ function RelationshipsBlock({
 }
 
 /** Wide detail card — fields only from ProductOffering JSON. */
-export function PlanDetailCard({ plan }: { plan: Plan }) {
+export function PlanDetailCard({
+    plan,
+    telusChangeLabel,
+    auditLogs,
+    schemaNotes,
+}: {
+    plan: Plan;
+    telusChangeLabel?: string | null;
+    auditLogs?: AuditLogEntry[];
+    schemaNotes?: OfferingSchemaNotes | null;
+}) {
     const summaryRows: { label: string; value: string }[] = [
         { label: "ID", value: plan.id },
         plan.category_type
@@ -391,6 +429,11 @@ export function PlanDetailCard({ plan }: { plan: Plan }) {
                                         key={row.label}
                                         label={row.label}
                                         value={row.value}
+                                        below={
+                                            row.label === "ID" && telusChangeLabel ? (
+                                                <TelusChangeBadge label={telusChangeLabel} />
+                                            ) : undefined
+                                        }
                                     />
                                 ))}
                             </dl>
@@ -467,6 +510,12 @@ export function PlanDetailCard({ plan }: { plan: Plan }) {
                     </ol>
                 </div>
             )}
+
+            {hasSchemaNotes(schemaNotes) && schemaNotes && (
+                <SchemaHeadsUp notes={schemaNotes} />
+            )}
+
+            <UnlistedChangeLog logs={auditLogs ?? []} />
         </section>
     );
 }
@@ -476,10 +525,16 @@ export function PlanDetailPage({
     plan,
     onBack,
     hideBack = false,
+    telusChangeLabel,
+    auditLogs,
+    schemaNotes,
 }: {
     plan: Plan;
     onBack: () => void;
     hideBack?: boolean;
+    telusChangeLabel?: string | null;
+    auditLogs?: AuditLogEntry[];
+    schemaNotes?: OfferingSchemaNotes | null;
 }) {
     return (
         <div className="space-y-4 sm:space-y-6 min-w-0">
@@ -494,7 +549,12 @@ export function PlanDetailPage({
                 </button>
             )}
 
-            <PlanDetailCard plan={plan} />
+            <PlanDetailCard
+                plan={plan}
+                telusChangeLabel={telusChangeLabel}
+                auditLogs={auditLogs}
+                schemaNotes={schemaNotes}
+            />
         </div>
     );
 }
