@@ -268,6 +268,10 @@ async function collectAmendmentUi(plans: PlanSummary[]): Promise<{
   amendedPlans: NonNullable<PlanListResponse["amendedPlans"]>;
   flaggedPlans: NonNullable<PlanListResponse["flaggedPlans"]>;
 }> {
+  const nameById = new Map(plans.map((p) => [p.id.trim().toLowerCase(), p.name]));
+  let amendedPlans: NonNullable<PlanListResponse["amendedPlans"]> = [];
+  let flaggedFromSync: NonNullable<PlanListResponse["flaggedPlans"]> = [];
+
   try {
     const offerings = USE_REAL_API
       ? await fetchUpstreamOfferings()
@@ -280,43 +284,78 @@ async function collectAmendmentUi(plans: PlanSummary[]): Promise<{
       if (offering) toSync.push(offering);
     }
 
-    const nameById = new Map(plans.map((p) => [p.id.trim().toLowerCase(), p.name]));
-
-    hydratePendingAlertsFromUnaackedAudits(nameById);
-
-    let amendedPlans: NonNullable<PlanListResponse["amendedPlans"]> = [];
+    try {
+      hydratePendingAlertsFromUnaackedAudits(nameById);
+    } catch (error) {
+      console.error("[collectAmendmentUi] hydrate", error);
+    }
 
     if (toSync.length > 0) {
       const summary = syncProductOfferings(toSync);
       const justChanged = summary.results.filter((r) => r.action !== "unchanged");
 
+      flaggedFromSync = justChanged
+        .map((r) =>
+          buildAmendmentAlert(
+            r.id,
+            nameById.get(r.id.trim().toLowerCase()) ?? r.id,
+            r.changes,
+            r.action,
+          ),
+        )
+        .filter((a): a is NonNullable<typeof a> => Boolean(a));
+
       if (justChanged.length > 0) {
-        const alerts = justChanged
-          .map((r) =>
-            buildAmendmentAlert(
-              r.id,
-              nameById.get(r.id.trim().toLowerCase()) ?? r.id,
-              r.changes,
-              r.action,
-            ),
-          )
-          .filter((a): a is NonNullable<typeof a> => Boolean(a));
-        upsertPendingAmendmentAlerts(alerts);
-        markAmendmentAlertsShown();
-        amendedPlans = getPendingAmendmentAlerts();
+        try {
+          upsertPendingAmendmentAlerts(flaggedFromSync);
+          markAmendmentAlertsShown();
+          amendedPlans = getPendingAmendmentAlerts();
+        } catch (error) {
+          console.error("[collectAmendmentUi] pending upsert", error);
+          amendedPlans = flaggedFromSync;
+        }
       } else {
-        amendedPlans = takePendingAmendmentAlertsForCleanFetch();
+        try {
+          amendedPlans = takePendingAmendmentAlertsForCleanFetch();
+        } catch (error) {
+          console.error("[collectAmendmentUi] pending take", error);
+          amendedPlans = [];
+        }
       }
     } else {
-      amendedPlans = takePendingAmendmentAlertsForCleanFetch();
+      try {
+        amendedPlans = takePendingAmendmentAlertsForCleanFetch();
+      } catch (error) {
+        console.error("[collectAmendmentUi] pending take", error);
+        amendedPlans = [];
+      }
     }
-
-    const flaggedPlans = getPlanChangeBadgesFromAudits(nameById);
-    return { amendedPlans, flaggedPlans };
   } catch (error) {
-    console.error("[collectAmendmentUi]", error);
-    return { amendedPlans: [], flaggedPlans: [] };
+    console.error("[collectAmendmentUi] sync", error);
   }
+
+  // Badges: prefer durable audit_logs; fall back to this request's sync hits
+  let flaggedPlans: NonNullable<PlanListResponse["flaggedPlans"]> = [];
+  try {
+    flaggedPlans = getPlanChangeBadgesFromAudits(nameById);
+  } catch (error) {
+    console.error("[collectAmendmentUi] badges", error);
+  }
+
+  if (flaggedPlans.length === 0 && flaggedFromSync.length > 0) {
+    flaggedPlans = flaggedFromSync;
+  }
+
+  // Merge any pending banner rows into badges so under-ID labels never lag the banner
+  if (amendedPlans.length > 0) {
+    const byId = new Map(flaggedPlans.map((p) => [p.id.trim().toLowerCase(), p]));
+    for (const row of amendedPlans) {
+      byId.set(row.id.trim().toLowerCase(), row);
+    }
+    flaggedPlans = [...byId.values()];
+  }
+
+  return { amendedPlans, flaggedPlans };
 }
 
 // ---------------------------------------------------------------------------
