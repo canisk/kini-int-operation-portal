@@ -43,9 +43,10 @@ export default function PlanListView() {
     void loadList();
   }, []);
 
-  const amendedById = useMemo(() => {
-    const map = new Map<string, NonNullable<PlanListResponse["amendedPlans"]>[number]>();
-    for (const item of response?.amendedPlans ?? []) {
+  /** Persistent under-ID badges (survive banner clear). */
+  const flaggedById = useMemo(() => {
+    const map = new Map<string, NonNullable<PlanListResponse["flaggedPlans"]>[number]>();
+    for (const item of response?.flaggedPlans ?? []) {
       map.set(item.id.trim().toLowerCase(), item);
     }
     return map;
@@ -122,32 +123,33 @@ export default function PlanListView() {
 
       {amendedPlans.length > 0 && (
         <div
-          className="rounded-xl border border-[#e6b800]/60 px-4 py-3 space-y-2"
-          style={{ backgroundColor: "#FFD1DE" }}
+          className="rounded-xl border border-amber-300/80 bg-[#FFF6D6] px-4 py-3.5 shadow-sm"
           role="alert"
         >
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-foreground" />
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-foreground">
-                Warning: {amendedPlans.length} product offering
-                {amendedPlans.length === 1 ? "" : "s"} amended on this fetch
+          <div className="flex items-start gap-2.5">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FFCF00]/80">
+              <AlertTriangle className="w-3.5 h-3.5 text-foreground" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-foreground leading-snug">
+                {amendedPlans.length} product offering
+                {amendedPlans.length === 1 ? "" : "s"} amended
               </p>
-              <p className="text-xs text-foreground/80 mt-0.5">
-                This notice clears automatically when the next API fetch finds no amendments.
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                Banner clears on the next clean API fetch. Plan badges stay under each ID.
               </p>
+              <ul className="mt-2.5 space-y-2 border-t border-amber-200/80 pt-2.5">
+                {amendedPlans.map((plan) => (
+                  <li key={plan.id} className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground leading-snug">{plan.name}</p>
+                    <code className="mt-0.5 block text-[11px] font-mono text-muted-foreground break-all">
+                      {plan.id}
+                    </code>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-          <ul className="space-y-1.5 pl-6">
-            {amendedPlans.map((plan) => (
-              <li key={plan.id} className="text-sm text-foreground min-w-0">
-                <span className="font-semibold leading-snug">{plan.name}</span>
-                <code className="mt-0.5 block text-[11px] font-mono break-all text-foreground/80">
-                  {plan.id}
-                </code>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
 
@@ -207,7 +209,7 @@ export default function PlanListView() {
           <ul className="divide-y divide-border">
             {filteredPlans.map((plan: PlanSummary) => {
               const isOpening = openingId === plan.id;
-              const amendment = amendedById.get(plan.id.trim().toLowerCase());
+              const flag = flaggedById.get(plan.id.trim().toLowerCase());
               return (
                 <li key={plan.id}>
                   <button
@@ -230,7 +232,7 @@ export default function PlanListView() {
                       <code className="mt-1 block text-[11px] font-mono text-muted-foreground break-all">
                         {plan.id}
                       </code>
-                      {amendment && <TelusChangeBadge label={amendment.label} />}
+                      {flag && <TelusChangeBadge label={flag.label} />}
                       {isOpening && (
                         <span className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-primary">
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />

@@ -31,6 +31,7 @@ import {
   buildAmendmentAlert,
   getPendingAmendmentAlertForId,
   getPendingAmendmentAlerts,
+  getPlanChangeBadgesFromAudits,
   hydratePendingAlertsFromUnaackedAudits,
   markAmendmentAlertsShown,
   takePendingAmendmentAlertsForCleanFetch,
@@ -228,36 +229,45 @@ export async function getPlanList(): Promise<PlanListResponse> {
     const res = await fetchUpstream("/plans");
 
     if (!res.ok) {
-      return { status: res.status, endpoint, count: 0, plans: [], amendedPlans: [] };
+      return {
+        status: res.status,
+        endpoint,
+        count: 0,
+        plans: [],
+        amendedPlans: [],
+        flaggedPlans: [],
+      };
     }
 
     const data: unknown = await res.json();
     const plans = parsePlanListPayload(data);
-    const amendedPlans = await collectAmendedPlans(plans);
-    return { status: 200, endpoint, count: plans.length, plans, amendedPlans };
+    const { amendedPlans, flaggedPlans } = await collectAmendmentUi(plans);
+    return { status: 200, endpoint, count: plans.length, plans, amendedPlans, flaggedPlans };
   }
 
   // ── FAKE API (delete this block once real API is live) ───────────────────
   await delay(300);
   const plans = MOCK_PLANS.map(toSummary);
-  const amendedPlans = await collectAmendedPlans(plans);
+  const { amendedPlans, flaggedPlans } = await collectAmendmentUi(plans);
   return {
     status: 200,
     endpoint,
     count: plans.length,
     plans,
     amendedPlans,
+    flaggedPlans,
   };
 }
 
 /**
- * Sync offerings for the listed plans against SQLite.
- * Pending alerts stay visible until a later clean fetch (with a short grace
- * window so React Strict Mode double-mount does not wipe them instantly).
+ * Sync offerings, then split UI signals:
+ * - amendedPlans → top warning banner (clears on clean fetch)
+ * - flaggedPlans → under-ID badges (persist via audit_logs)
  */
-async function collectAmendedPlans(
-  plans: PlanSummary[],
-): Promise<NonNullable<PlanListResponse["amendedPlans"]>> {
+async function collectAmendmentUi(plans: PlanSummary[]): Promise<{
+  amendedPlans: NonNullable<PlanListResponse["amendedPlans"]>;
+  flaggedPlans: NonNullable<PlanListResponse["flaggedPlans"]>;
+}> {
   try {
     const offerings = USE_REAL_API
       ? await fetchUpstreamOfferings()
@@ -272,8 +282,9 @@ async function collectAmendedPlans(
 
     const nameById = new Map(plans.map((p) => [p.id.trim().toLowerCase(), p.name]));
 
-    // Surface audits not yet acknowledged (e.g. change synced on detail page first)
     hydratePendingAlertsFromUnaackedAudits(nameById);
+
+    let amendedPlans: NonNullable<PlanListResponse["amendedPlans"]> = [];
 
     if (toSync.length > 0) {
       const summary = syncProductOfferings(toSync);
@@ -292,14 +303,19 @@ async function collectAmendedPlans(
           .filter((a): a is NonNullable<typeof a> => Boolean(a));
         upsertPendingAmendmentAlerts(alerts);
         markAmendmentAlertsShown();
-        return getPendingAmendmentAlerts();
+        amendedPlans = getPendingAmendmentAlerts();
+      } else {
+        amendedPlans = takePendingAmendmentAlertsForCleanFetch();
       }
+    } else {
+      amendedPlans = takePendingAmendmentAlertsForCleanFetch();
     }
 
-    return takePendingAmendmentAlertsForCleanFetch();
+    const flaggedPlans = getPlanChangeBadgesFromAudits(nameById);
+    return { amendedPlans, flaggedPlans };
   } catch (error) {
-    console.error("[collectAmendedPlans]", error);
-    return [];
+    console.error("[collectAmendmentUi]", error);
+    return { amendedPlans: [], flaggedPlans: [] };
   }
 }
 

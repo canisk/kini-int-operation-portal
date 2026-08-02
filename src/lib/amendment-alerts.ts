@@ -189,6 +189,50 @@ export function buildAmendmentAlert(
 }
 
 /**
+ * Persistent list badges from the latest audit_logs row per offering.
+ * Not cleared when the warning banner is dismissed on a clean fetch.
+ */
+export function getPlanChangeBadgesFromAudits(
+  nameById: Map<string, string>,
+): PendingAmendmentAlert[] {
+  ensureAmendmentAlertSchema();
+  const rows = getProductLogDb()
+    .prepare(
+      `SELECT a.product_offering_id, a.action_type, a.detected_changes
+       FROM audit_logs a
+       INNER JOIN (
+         SELECT product_offering_id, MAX(id) AS max_id
+         FROM audit_logs
+         GROUP BY product_offering_id
+       ) latest ON latest.max_id = a.id`,
+    )
+    .all() as unknown as Array<{
+      product_offering_id: string;
+      action_type: "INSERT" | "UPDATE";
+      detected_changes: string;
+    }>;
+
+  const badges: PendingAmendmentAlert[] = [];
+  for (const row of rows) {
+    let changes: AuditFieldChange[] = [];
+    try {
+      changes = JSON.parse(row.detected_changes) as AuditFieldChange[];
+    } catch {
+      changes = [{ path: "(root)", from: null, to: "updated" }];
+    }
+    const alert = buildAmendmentAlert(
+      row.product_offering_id,
+      nameById.get(row.product_offering_id.trim().toLowerCase()) ??
+        row.product_offering_id,
+      changes,
+      row.action_type,
+    );
+    if (alert) badges.push(alert);
+  }
+  return badges;
+}
+
+/**
  * Pull unacknowledged audit_logs into pending alerts
  * (covers changes already written before the list page loaded).
  */

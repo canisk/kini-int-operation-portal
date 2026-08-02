@@ -77,8 +77,16 @@ export interface PlanListResponse {
   endpoint: string;
   count: number;
   plans: PlanSummary[];
-  /** Plans whose offering JSON changed on this fetch/sync (clears when next fetch is clean). */
+  /** Warning banner only — clears on the next clean fetch. */
   amendedPlans?: Array<{
+    id: string;
+    name: string;
+    listed: boolean;
+    unlisted: boolean;
+    label: string;
+  }>;
+  /** Persistent TELUS badges under plan IDs (from audit_logs; not cleared with the banner). */
+  flaggedPlans?: Array<{
     id: string;
     name: string;
     listed: boolean;

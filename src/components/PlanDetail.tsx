@@ -105,8 +105,8 @@ function SummaryRow({
 export function TelusChangeBadge({ label }: { label: string }) {
     return (
         <span
-            className="inline-flex mt-1.5 text-[11px] font-bold px-2 py-0.5 rounded-md text-foreground"
-            style={{ backgroundColor: "#FFD1DE" }}
+            className="inline-flex mt-1.5 max-w-full items-center text-[10px] sm:text-[11px] font-bold leading-tight px-2 py-1 rounded-md text-foreground border border-black/5 shadow-sm"
+            style={{ backgroundColor: "#FFCF00" }}
         >
             {label}
         </span>
