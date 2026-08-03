@@ -5,9 +5,37 @@
 
 import type { PlanByIdResponse, PlanListResponse } from "@/lib/types";
 
-export async function fetchPlanList(): Promise<PlanListResponse> {
-  const res = await fetch("/api/v1/plans", { cache: "no-store" });
+export interface SyncOfferingsResponse {
+  status: number;
+  endpoint: string;
+  triggeredBy?: "cron" | "manual";
+  ranAt?: string;
+  source?: string;
+  inserted?: number;
+  updated?: number;
+  unchanged?: number;
+  total?: number;
+  error?: string;
+  changedIds?: Array<{ id: string; action: string; changeCount: number }>;
+}
+
+export async function fetchPlanList(options?: {
+  acknowledgeAmendments?: boolean;
+}): Promise<PlanListResponse> {
+  const params = options?.acknowledgeAmendments ? "?ackAmendments=1" : "";
+  const res = await fetch(`/api/v1/plans${params}`, { cache: "no-store" });
   const data = (await res.json()) as PlanListResponse;
+  return { ...data, status: data.status ?? res.status };
+}
+
+/** Instant catalogue sync (same endpoint the 9am / 1pm cron hits). */
+export async function syncOfferingsNow(): Promise<SyncOfferingsResponse> {
+  const res = await fetch("/api/v1/sync/offerings", {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+  });
+  const data = (await res.json()) as SyncOfferingsResponse;
   return { ...data, status: data.status ?? res.status };
 }
 

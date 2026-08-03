@@ -1,57 +1,78 @@
 import { NextResponse } from "next/server";
-import offeringsById from "@/data/product-offerings.json";
-import {
-  PLANS_API_BASE_URL,
-  USE_REAL_API,
-  fetchUpstreamOfferings,
-} from "@/lib/plans-api";
-import type { ProductOffering } from "@/lib/product-offering";
-import { syncProductOfferings } from "@/lib/offering-store";
-import { getProductLogDbPath } from "@/lib/db";
+import { runOfferingSync, type SyncTriggerSource } from "@/lib/offering-sync-job";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /**
- * POST /api/v1/sync/offerings
- * Scheduled job (e.g. 8am & 1pm):
- *   external API (+ auth) → compare to SQLite → audit_logs + product_offerings
+ * GET/POST /api/v1/sync/offerings  — portable sync entrypoint
+ *
+ * Triggers (same job):
+ * - Manual Refresh on /plans-portal/all-plans
+ * - Vercel Cron (vercel.json) while on Vercel
+ * - Optional external NAS/system cron → this URL
+ * - Docker/NAS also has an in-process scheduler that calls runOfferingSync() directly
  */
-export async function POST() {
-  try {
-    const offerings = await loadCurrentOfferings();
-    const summary = syncProductOfferings(offerings);
+export async function POST(request: Request) {
+  return handleSync(request);
+}
 
-    return NextResponse.json({
-      status: 200,
-      endpoint: "/api/v1/sync/offerings",
-      dbPath: getProductLogDbPath(),
-      source: USE_REAL_API ? "remote" : "local-json",
-      apiBaseUrl: PLANS_API_BASE_URL || null,
-      ...summary,
-      changedIds: summary.results
-        .filter((r) => r.action !== "unchanged")
-        .map((r) => ({ id: r.id, action: r.action, changeCount: r.changes.length })),
-      results: undefined,
-    });
+export async function GET(request: Request) {
+  return handleSync(request);
+}
+
+async function handleSync(request: Request) {
+  const authError = authorizeSyncRequest(request);
+  if (authError) return authError;
+
+  const triggeredBy = resolveTriggerSource(request);
+
+  try {
+    const body = await runOfferingSync(triggeredBy);
+    return NextResponse.json(body);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Sync failed";
+    console.error("[sync/offerings]", error);
     return NextResponse.json(
-      { status: 500, endpoint: "/api/v1/sync/offerings", error: message },
+      {
+        status: 500,
+        endpoint: "/api/v1/sync/offerings",
+        triggeredBy,
+        error: message,
+      },
       { status: 500 },
     );
   }
 }
 
-/** Allow GET for easy browser/scheduler smoke tests. */
-export async function GET() {
-  return POST();
+/**
+ * Optional SYNC_API_SECRET / CRON_SECRET:
+ * - No Authorization header → allow (portal Refresh)
+ * - Bearer matching secret → allow (Vercel Cron / external cron)
+ * - Wrong Bearer → 401
+ */
+function authorizeSyncRequest(request: Request): NextResponse | null {
+  const secret =
+    process.env.SYNC_API_SECRET?.trim() || process.env.CRON_SECRET?.trim();
+  if (!secret) return null;
+
+  const auth = request.headers.get("authorization");
+  if (!auth) return null;
+  if (auth === `Bearer ${secret}`) return null;
+
+  return NextResponse.json(
+    { status: 401, endpoint: "/api/v1/sync/offerings", error: "Unauthorized" },
+    { status: 401 },
+  );
 }
 
-async function loadCurrentOfferings(): Promise<ProductOffering[]> {
-  if (USE_REAL_API) {
-    return fetchUpstreamOfferings();
-  }
-  // Dev fallback until real API credentials are configured
-  return Object.values(offeringsById as Record<string, ProductOffering>);
+function resolveTriggerSource(request: Request): SyncTriggerSource {
+  if (request.headers.get("x-vercel-cron") === "1") return "cron";
+
+  const secret =
+    process.env.SYNC_API_SECRET?.trim() || process.env.CRON_SECRET?.trim();
+  const auth = request.headers.get("authorization");
+  if (secret && auth === `Bearer ${secret}`) return "cron";
+  return "manual";
 }

@@ -85,6 +85,10 @@ export interface PlanListResponse {
     unlisted: boolean;
     label: string;
   }>;
+  /** ISO timestamp for when the current banner batch was last written. */
+  amendedAt?: string | null;
+  /** ISO timestamp of the previous fetch/baseline before this amendment. */
+  amendedFrom?: string | null;
   /** Persistent TELUS badges under plan IDs (from audit_logs; not cleared with the banner). */
   flaggedPlans?: Array<{
     id: string;

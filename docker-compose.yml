@@ -1,0 +1,21 @@
+services:
+  portal:
+    build: .
+    container_name: kini-operations-portal
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      SYNC_SCHEDULER_ENABLED: "true"
+      SYNC_SCHEDULER_TZ: America/Toronto
+      SYNC_SCHEDULER_HOURS: "9,13"
+      SYNC_SCHEDULER_BASE_URL: http://127.0.0.1:3000
+      PRODUCT_ALL_LOG_DB_PATH: /app/data/product-all-log.db
+      # PLANS_API_BASE_URL: https://api.example.com/api/v1
+      # PLANS_API_TOKEN: ""
+      # SYNC_API_SECRET: ""
+      # SLACK_WEBHOOK_URL: https://hooks.slack.com/services/xxx/yyy/zzz
+    volumes:
+      # Persist SQLite (product_offerings + audit_logs) on the NAS
+      - ./data:/app/data
+    restart: unless-stopped

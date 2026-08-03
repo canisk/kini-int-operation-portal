@@ -5,8 +5,8 @@
  *
  * Today: fake API that returns CCP catalogue mock data
  * Later:
- *   1. Set PLANS_API_BASE_URL + auth (token and/or username/password) in .env.local
- *   2. Cron hits POST /api/v1/sync/offerings → fetches external JSON → compares/inserts SQLite
+ *   1. Set PLANS_API_BASE_URL + auth in .env / Docker env
+ *   2. Sync job = /api/v1/sync/offerings (Refresh + platform cron + Docker scheduler)
  *   3. Compare / audit_logs / Change log (Unlisted) UI stay the same
  *
  * Used by:
@@ -28,17 +28,21 @@ import {
   syncProductOfferings,
 } from "@/lib/offering-store";
 import {
+  acknowledgeAmendmentBanner,
   buildAmendmentAlert,
+  getAmendmentBannerState,
+  getLastFetchAt,
   getPendingAmendmentAlertForId,
   getPendingAmendmentAlerts,
+  getPendingAmendmentFromAt,
+  getPendingAmendmentUpdatedAt,
   getPlanChangeBadgesFromAudits,
-  hydratePendingAlertsFromUnaackedAudits,
-  markAmendmentAlertsShown,
-  takePendingAmendmentAlertsForCleanFetch,
-  upsertPendingAmendmentAlerts,
+  replacePendingAmendmentAlerts,
+  touchLastFetchAt,
 } from "@/lib/amendment-alerts";
 import { classifyTelusChanges, formatTelusChangeLabel } from "@/lib/telus-change";
 import { inspectOfferingSchema } from "@/lib/offering-schema";
+import { notifySlackFromAlerts } from "@/lib/slack";
 import type { Plan, PlanByIdResponse, PlanListResponse, PlanSummary } from "@/lib/types";
 import offeringsById from "@/data/product-offerings.json";
 
@@ -221,7 +225,9 @@ export async function fetchUpstreamOfferings(): Promise<ProductOffering[]> {
 // 2. GET /plans — list plan IDs + names
 // ---------------------------------------------------------------------------
 
-export async function getPlanList(): Promise<PlanListResponse> {
+export async function getPlanList(options?: {
+  acknowledgeAmendments?: boolean;
+}): Promise<PlanListResponse> {
   const endpoint = "/api/v1/plans";
 
   // ── REAL API (enable when you have it) ───────────────────────────────────
@@ -235,41 +241,63 @@ export async function getPlanList(): Promise<PlanListResponse> {
         count: 0,
         plans: [],
         amendedPlans: [],
+        amendedAt: null,
+        amendedFrom: null,
         flaggedPlans: [],
       };
     }
 
     const data: unknown = await res.json();
     const plans = parsePlanListPayload(data);
-    const { amendedPlans, flaggedPlans } = await collectAmendmentUi(plans);
-    return { status: 200, endpoint, count: plans.length, plans, amendedPlans, flaggedPlans };
+    const { amendedPlans, flaggedPlans, amendedAt, amendedFrom } =
+      await collectAmendmentUi(plans, options);
+    return {
+      status: 200,
+      endpoint,
+      count: plans.length,
+      plans,
+      amendedPlans,
+      amendedAt,
+      amendedFrom,
+      flaggedPlans,
+    };
   }
 
   // ── FAKE API (delete this block once real API is live) ───────────────────
   await delay(300);
   const plans = MOCK_PLANS.map(toSummary);
-  const { amendedPlans, flaggedPlans } = await collectAmendmentUi(plans);
+  const { amendedPlans, flaggedPlans, amendedAt, amendedFrom } =
+    await collectAmendmentUi(plans, options);
   return {
     status: 200,
     endpoint,
     count: plans.length,
     plans,
     amendedPlans,
+    amendedAt,
+    amendedFrom,
     flaggedPlans,
   };
 }
 
 /**
  * Sync offerings, then split UI signals:
- * - amendedPlans → top warning banner (clears on clean fetch)
+ * - amendedPlans → top warning banner (latest batch; clears only on explicit ack)
  * - flaggedPlans → under-ID badges (persist via audit_logs)
  */
-async function collectAmendmentUi(plans: PlanSummary[]): Promise<{
+async function collectAmendmentUi(
+  plans: PlanSummary[],
+  options?: { acknowledgeAmendments?: boolean },
+): Promise<{
   amendedPlans: NonNullable<PlanListResponse["amendedPlans"]>;
   flaggedPlans: NonNullable<PlanListResponse["flaggedPlans"]>;
+  amendedAt: string | null;
+  amendedFrom: string | null;
 }> {
   const nameById = new Map(plans.map((p) => [p.id.trim().toLowerCase(), p.name]));
   let amendedPlans: NonNullable<PlanListResponse["amendedPlans"]> = [];
+  let amendedAt: string | null = null;
+  let amendedFrom: string | null = null;
   let flaggedFromSync: NonNullable<PlanListResponse["flaggedPlans"]> = [];
 
   try {
@@ -284,15 +312,11 @@ async function collectAmendmentUi(plans: PlanSummary[]): Promise<{
       if (offering) toSync.push(offering);
     }
 
-    try {
-      hydratePendingAlertsFromUnaackedAudits(nameById);
-    } catch (error) {
-      console.error("[collectAmendmentUi] hydrate", error);
-    }
-
     if (toSync.length > 0) {
+      const previousFetchAt = getLastFetchAt();
       const summary = syncProductOfferings(toSync);
       const justChanged = summary.results.filter((r) => r.action !== "unchanged");
+      const detectedAt = new Date().toISOString();
 
       flaggedFromSync = justChanged
         .map((r) =>
@@ -307,28 +331,71 @@ async function collectAmendmentUi(plans: PlanSummary[]): Promise<{
 
       if (justChanged.length > 0) {
         try {
-          upsertPendingAmendmentAlerts(flaggedFromSync);
-          markAmendmentAlertsShown();
+          replacePendingAmendmentAlerts(flaggedFromSync, {
+            fromAt: previousFetchAt,
+            updatedAt: detectedAt,
+          });
           amendedPlans = getPendingAmendmentAlerts();
+          amendedAt = getPendingAmendmentUpdatedAt();
+          amendedFrom = getPendingAmendmentFromAt();
         } catch (error) {
-          console.error("[collectAmendmentUi] pending upsert", error);
+          console.error("[collectAmendmentUi] pending replace", error);
           amendedPlans = flaggedFromSync;
+          amendedAt = detectedAt;
+          amendedFrom = previousFetchAt;
+        }
+
+        const changeCounts = new Map<string, number>();
+        const actions = new Map<string, string>();
+        const changesById = new Map<
+          string,
+          (typeof justChanged)[number]["changes"]
+        >();
+        for (const r of justChanged) {
+          const key = r.id.trim().toLowerCase();
+          changeCounts.set(key, r.changes.length);
+          actions.set(key, r.action);
+          changesById.set(key, r.changes);
+        }
+        void notifySlackFromAlerts("list-fetch", flaggedFromSync, {
+          source: USE_REAL_API ? "remote" : "local-json",
+          changeCounts,
+          actions,
+          changesById,
+        });
+      } else if (options?.acknowledgeAmendments) {
+        try {
+          acknowledgeAmendmentBanner();
+          amendedPlans = [];
+          amendedAt = null;
+          amendedFrom = null;
+        } catch (error) {
+          console.error("[collectAmendmentUi] acknowledge", error);
         }
       } else {
         try {
-          amendedPlans = takePendingAmendmentAlertsForCleanFetch();
+          const banner = getAmendmentBannerState(nameById);
+          amendedPlans = banner.amendedPlans;
+          amendedAt = banner.amendedAt;
+          amendedFrom = banner.amendedFrom;
         } catch (error) {
-          console.error("[collectAmendmentUi] pending take", error);
+          console.error("[collectAmendmentUi] banner state", error);
           amendedPlans = [];
+          amendedAt = null;
+          amendedFrom = null;
         }
       }
+
+      touchLastFetchAt(detectedAt);
+    } else if (options?.acknowledgeAmendments) {
+      acknowledgeAmendmentBanner();
+      touchLastFetchAt();
     } else {
-      try {
-        amendedPlans = takePendingAmendmentAlertsForCleanFetch();
-      } catch (error) {
-        console.error("[collectAmendmentUi] pending take", error);
-        amendedPlans = [];
-      }
+      const banner = getAmendmentBannerState(nameById);
+      amendedPlans = banner.amendedPlans;
+      amendedAt = banner.amendedAt;
+      amendedFrom = banner.amendedFrom;
+      touchLastFetchAt();
     }
   } catch (error) {
     console.error("[collectAmendmentUi] sync", error);
@@ -346,7 +413,6 @@ async function collectAmendmentUi(plans: PlanSummary[]): Promise<{
     flaggedPlans = flaggedFromSync;
   }
 
-  // Merge any pending banner rows into badges so under-ID labels never lag the banner
   if (amendedPlans.length > 0) {
     const byId = new Map(flaggedPlans.map((p) => [p.id.trim().toLowerCase(), p]));
     for (const row of amendedPlans) {
@@ -355,7 +421,7 @@ async function collectAmendmentUi(plans: PlanSummary[]): Promise<{
     flaggedPlans = [...byId.values()];
   }
 
-  return { amendedPlans, flaggedPlans };
+  return { amendedPlans, flaggedPlans, amendedAt, amendedFrom };
 }
 
 // ---------------------------------------------------------------------------
@@ -427,7 +493,7 @@ function withAuditSync(
 
     if (sync.action !== "unchanged") {
       const alert = buildAmendmentAlert(offering.id, plan.name, sync.changes, sync.action);
-      if (alert) upsertPendingAmendmentAlerts([alert]);
+      if (alert) replacePendingAmendmentAlerts([alert]);
     }
 
     const pending = getPendingAmendmentAlertForId(offering.id);

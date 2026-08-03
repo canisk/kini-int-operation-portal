@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ChevronRight, Code, Eye, Loader2, RefreshCw, Search, X } from "lucide-react";
-import { fetchPlanList } from "@/lib/api";
+import { fetchPlanList, syncOfferingsNow } from "@/lib/api";
+import { formatBannerDateTime } from "@/lib/datetime";
 import type { PlanListResponse, PlanSummary } from "@/lib/types";
 import { categoryIcon } from "@/components/planHelpers";
 import { TelusChangeBadge } from "@/components/PlanDetail";
@@ -11,6 +12,7 @@ import { TelusChangeBadge } from "@/components/PlanDetail";
 export default function PlanListView() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
   const [response, setResponse] = useState<PlanListResponse | null>(null);
   const [error, setError] = useState("");
@@ -30,6 +32,30 @@ export default function PlanListView() {
       setError("Failed to reach /api/v1/plans");
     } finally {
       setLoading(false);
+    }
+  };
+
+  /** Instant sync (same job as 9am/1pm cron), then reload the list. */
+  const refreshNow = async () => {
+    if (refreshing || loading) return;
+    setRefreshing(true);
+    setError("");
+    try {
+      const sync = await syncOfferingsNow();
+      if (sync.status !== 200) {
+        setError(sync.error ?? "Sync failed");
+      }
+      const hadChanges = (sync.changedIds?.length ?? 0) > 0;
+      // Clear banner only on a clean Refresh (no new amendments this sync).
+      const data = await fetchPlanList({
+        acknowledgeAmendments: !hadChanges,
+      });
+      setResponse(data);
+      setFetchedAt(new Date().toLocaleTimeString());
+    } catch {
+      setError("Failed to sync / refresh plans");
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -135,8 +161,21 @@ export default function PlanListView() {
                 {amendedPlans.length} product offering
                 {amendedPlans.length === 1 ? "" : "s"} amended
               </p>
+              {(response.amendedFrom || response.amendedAt) && (
+                <p className="text-[11px] font-medium text-amber-950/80 mt-0.5 leading-relaxed">
+                  From{" "}
+                  {response.amendedFrom
+                    ? formatBannerDateTime(response.amendedFrom)
+                    : "—"}{" "}
+                  –{" "}
+                  {response.amendedAt
+                    ? formatBannerDateTime(response.amendedAt)
+                    : "—"}
+                </p>
+              )}
               <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                Banner clears on the next clean API fetch. Plan badges stay under each ID.
+                Shows only the latest change batch. Clears on the next clean Refresh (no new
+                changes). Plan badges stay under each ID.
               </p>
               <ul className="mt-2.5 space-y-2 border-t border-amber-200/80 pt-2.5">
                 {amendedPlans.map((plan) => (
@@ -169,11 +208,14 @@ export default function PlanListView() {
           </span>
           <button
             type="button"
-            onClick={() => void loadList()}
-            className="p-1.5 rounded-lg bg-card border border-border hover:bg-muted transition-colors"
-            title="Refresh"
+            onClick={() => void refreshNow()}
+            disabled={refreshing || loading}
+            className="p-1.5 rounded-lg bg-card border border-border hover:bg-muted transition-colors disabled:opacity-50"
+            title="Sync now (same job as 9am / 1pm scheduler)"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
+            <RefreshCw
+              className={`w-3.5 h-3.5 text-muted-foreground ${refreshing ? "animate-spin" : ""}`}
+            />
           </button>
           <button
             type="button"

@@ -9,8 +9,8 @@ function isServerlessRuntime(): boolean {
 }
 
 /**
- * Locate the bundled SQLite file. On Vercel, cwd and tracing layout can vary,
- * so we probe several candidates.
+ * Locate SQLite DB.
+ * Docker/NAS: set PRODUCT_ALL_LOG_DB_PATH=/app/data/product-all-log.db (volume-mounted).
  */
 function resolveBundledDbPath(): string {
   const fromEnv = process.env.PRODUCT_ALL_LOG_DB_PATH?.trim();
@@ -31,7 +31,9 @@ function resolveBundledDbPath(): string {
 }
 
 /**
- * Writable DB path. Vercel’s app filesystem is read-only — copy into /tmp.
+ * Writable DB path.
+ * Long-running Docker/NAS uses the data volume directly.
+ * Serverless (if ever used) copies into /tmp.
  */
 function resolveWritableDbPath(bundledPath: string): string {
   if (!isServerlessRuntime()) return bundledPath;
@@ -44,7 +46,6 @@ function resolveWritableDbPath(bundledPath: string): string {
     if (bundledExists && !tmpExists) {
       fs.copyFileSync(bundledPath, tmpPath);
     } else if (bundledExists && tmpExists) {
-      // Refresh /tmp copy if the deployed bundle is newer (new deploy)
       const bundledStat = fs.statSync(bundledPath);
       const tmpStat = fs.statSync(tmpPath);
       if (bundledStat.mtimeMs > tmpStat.mtimeMs) {
@@ -52,12 +53,12 @@ function resolveWritableDbPath(bundledPath: string): string {
       }
     } else if (!bundledExists && !tmpExists) {
       throw new Error(
-        `SQLite DB not found at ${bundledPath}. Include data/${DB_FILENAME} in the deploy.`,
+        `SQLite DB not found at ${bundledPath}. Mount data/${DB_FILENAME} or set PRODUCT_ALL_LOG_DB_PATH.`,
       );
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to prepare SQLite DB for serverless: ${message}`);
+    throw new Error(`Failed to prepare SQLite DB: ${message}`);
   }
 
   return tmpPath;
@@ -74,8 +75,8 @@ export function getProductLogDb(): DatabaseSync {
 
   if (!fs.existsSync(dbPath)) {
     throw new Error(
-      `SQLite DB not found at ${dbPath} (bundled candidate: ${bundledPath}). ` +
-        `Set PRODUCT_ALL_LOG_DB_PATH or ensure data/${DB_FILENAME} is traced into the serverless bundle.`,
+      `SQLite DB not found at ${dbPath}. ` +
+        `For Docker/NAS, mount ./data and set PRODUCT_ALL_LOG_DB_PATH=/app/data/${DB_FILENAME}.`,
     );
   }
 

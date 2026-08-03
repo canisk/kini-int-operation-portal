@@ -323,7 +323,7 @@
       "id": "spec_v1.0_03beeb83-eae5-4371-bde5-4aafa53f1677",
       "href": "https://bss.tenant101-kz86t3-prod.corenetcloud.net/catalogManagement/catalog/productSpecification/spec_v1.0_03beeb83-eae5-4371-bde5-4aafa53f1677"
     },
-    "lifecycleStatus": "Active",
+    "lifecycleStatus": "Inactive",
     "id": "offering_v1.0_29f1c-464f-a3eb-12012ed295bc",
     "bundledProductOfferingRef": [
       {
